@@ -1,8 +1,11 @@
 package com.cursojava.course.services;
 
 import com.cursojava.course.entities.User;
+import com.cursojava.course.exceptions.DatabaseException;
 import com.cursojava.course.exceptions.ResourceNotFoundException;
+import com.cursojava.course.repositories.OrderRepository;
 import com.cursojava.course.repositories.UserRepository;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +16,9 @@ import java.util.Optional;
 public class UserService {
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private OrderRepository orderRepository;
 
     public List<User> findAll() {
         return userRepository.findAll();
@@ -27,7 +33,15 @@ public class UserService {
     }
 
     public void delete(Long id) {
-        userRepository.deleteById(id);
+        if (userRepository.existsById(id)) {
+            if(orderRepository.findAllByClientId(id).size() > 0) {
+                throw new DatabaseException("Usuário possui pedidos associados");
+            }
+            userRepository.deleteById(id);
+        }else{
+            throw new ResourceNotFoundException("Usuário de id: %d não encontrado".formatted(id));
+        }
+
     }
 
     public User update(Long id, User obj) {
